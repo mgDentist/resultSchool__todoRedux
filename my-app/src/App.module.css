@@ -1,0 +1,34 @@
+.app {
+  text-align: center;
+}
+
+.appHeader {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #282c34;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.todoList {
+  width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  background-color: #282c34;
+}
+
+.todoListItem {
+  padding: 10px;
+  color: antiquewhite;
+  text-align: left;
+  border: 1px solid white;
+  border-radius: 4px;
+}
+
