@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import style from "../App.module.css"
+import { ref, onValue, push, set, remove } from "firebase/database";
+import { db } from "../firebase";
+import style from "../App.module.css";
 
 const GetTodos = () => {
-    const [todos, setTodos] = useState([]);
+    const [todos, setTodos] = useState({});
     const [newTodo, setNewTodo] = useState("");
     const [editingTodo, setEditingTodo] = useState(null);
     const [editedTodos, setEditedTodos] = useState({});
@@ -11,57 +13,29 @@ const GetTodos = () => {
 
 
     useEffect(() => {
-        fetch("http://localhost:3001/todos")
-            .then((response) => response.json())
-            .then((data) => setTodos(data))
-            .catch((error) => console.error("Ошибка получения данных: ", error));
-    }, []);
+        const dbRef = ref(db, "todos");
+        return onValue(dbRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            setTodos(data);
+        });
+    },
+        []);
 
     const addTodo = () => {
-        fetch("http://localhost:3001/todos", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ title: newTodo }),
-        })
-            .then((response) => response.json())
-            .then((data) => {
-                setTodos([...todos, data]);
-                setNewTodo("");
-            })
-            .catch((error) => console.error("Ошибка добавления данных: ", error));
+        const dbRef = ref(db, "todos");
+        push(dbRef, { title: newTodo });
+        setNewTodo("");
     };
 
-    const editTodo = (id, title) => {
-        fetch(`http://localhost:3001/todos/${id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ title: editedTodos[id] }),
-        })
-            .then(() => {
-                const updatedTodos = todos.map((todo) => {
-                    if (todo.id === id) {
-                        todo.title = editedTodos[id];
-                    }
-                    return todo;
-                });
-                setTodos(updatedTodos);
-            })
-            .catch((error) => console.error("Ошибка редактирования данных: ", error));
+    const editTodo = (id) => {
+        const dbRef = ref(db, `todos/${id}`);
+        set(dbRef, { title: editedTodos[id] });
         setEditingTodo(null);
     };
 
     const deleteTodo = (id) => {
-        fetch(`http://localhost:3001/todos/${id}`, {
-            method: "DELETE",
-        })
-            .then(() => {
-                setTodos(todos.filter((todo) => todo.id !== id));
-            })
-            .catch((error) => console.error("Ошибка удаления данных: ", error));
+        const dbRef = ref(db, `todos/${id}`);
+        remove(dbRef);
     };
 
     const handleSearch = (query) => {
@@ -73,8 +47,8 @@ const GetTodos = () => {
     };
 
     const sortedTodos = isSorted
-        ? [...todos].sort((a, b) => a.title.localeCompare(b.title))
-        : todos;
+    ? Object.entries(todos).sort((a, b) => a[1].title.localeCompare(b[1].title))
+    : Object.entries(todos);
 
     return (
         <>
@@ -93,27 +67,28 @@ const GetTodos = () => {
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                 />
+
             </div>
             <ul className={style.todoList}>
-                {sortedTodos.map((todo) => (
+                {sortedTodos.map(([id, todo]) => (
                     <li
-                        className={`${style.todoListItem} ${todo.title.includes(searchQuery) && searchQuery !== "" ? style.highlight : ""
+                        className={`${style.todoListItem} ${todo.title && todo.title.includes(searchQuery) && searchQuery !== "" ? style.highlight : ""
                             }`}
-                        key={todo.id}
+                        key={id}
                     >
-                        {editingTodo === todo.id ? (
+                        {editingTodo === id ? (
                             <div>
                                 <input
                                     className={style.todoListItemInput}
                                     type="text"
-                                    value={editedTodos[todo.id] || todo.title}
+                                    value={editedTodos[id] || todo.title}
                                     onChange={(e) => {
                                         const newEditedTodos = { ...editedTodos };
-                                        newEditedTodos[todo.id] = e.target.value;
+                                        newEditedTodos[id] = e.target.value;
                                         setEditedTodos(newEditedTodos);
                                     }}
                                 />
-                                <button onClick={() => editTodo(todo.id)}>
+                                <button onClick={() => editTodo(id)}>
                                     Ок
                                 </button>
                             </div>
@@ -123,10 +98,10 @@ const GetTodos = () => {
                                 <div className={style.innerWrapper}>
                                     <button
                                         className={style.todoListItemButton}
-                                        onClick={() => setEditingTodo(todo.id)}>Редактировать</button>
+                                        onClick={() => setEditingTodo(id)}>Редактировать</button>
                                     <button
                                         className={style.todoListItemButton}
-                                        onClick={() => deleteTodo(todo.id)}>Удалить</button>
+                                        onClick={() => deleteTodo(id)}>Удалить</button>
                                 </div>
                             </div>
                         )}
